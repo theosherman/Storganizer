@@ -1,1 +1,14 @@
+node_modules/
+dist/
+.wrangler/
+.dev.vars
 .superpowers/
+.worktrees/
+.mf/
+*.local
+
+# Playwright
+apps/web/playwright-report/
+apps/web/test-results/
+
+/docs

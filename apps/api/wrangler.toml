@@ -1,0 +1,33 @@
+name = "storganizer-api"
+main = "src/index.ts"
+compatibility_date = "2026-04-01"
+compatibility_flags = ["nodejs_compat"]
+
+[ai]
+binding = "AI"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "storganizer-db"
+database_id = "local"
+migrations_dir = "src/db/migrations"
+
+[[r2_buckets]]
+binding = "STORAGE"
+bucket_name = "storganizer-storage"
+
+[[queues.producers]]
+queue = "storganizer-image-queue"
+binding = "IMAGE_QUEUE"
+
+[[queues.consumers]]
+queue = "storganizer-image-queue"
+max_batch_size = 10
+max_batch_timeout = 30
+
+[vars]
+ADMIN_EMAIL = "admin@example.com"
+GOOGLE_CLIENT_ID = ""
+GOOGLE_CLIENT_SECRET = ""
+JWT_SECRET = "dev-secret-change-in-production"
+FRONTEND_URL = "http://localhost:5173"
