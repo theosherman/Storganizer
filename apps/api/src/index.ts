@@ -38,6 +38,15 @@ app.route("/api/containers", containers);
 app.route("/api/items", items);
 app.route("/api/admin", admin);
 
+app.notFound((c) => {
+  if (c.req.path.startsWith("/api/")) {
+    return c.json({ error: "Not found" }, 404);
+  }
+  const url = new URL(c.req.url);
+  url.pathname = "/";
+  return c.env.ASSETS.fetch(url.toString());
+});
+
 export default {
   fetch: app.fetch,
   async queue(batch: MessageBatch<{ item_id: string; photo_r2_key: string }>, env: Env) {

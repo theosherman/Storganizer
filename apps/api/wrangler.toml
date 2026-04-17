@@ -9,7 +9,7 @@ binding = "AI"
 [[d1_databases]]
 binding = "DB"
 database_name = "storganizer-db"
-database_id = "local"
+database_id = "0a8594a9-3d3d-4939-bb35-fe7ba447806c"
 migrations_dir = "src/db/migrations"
 
 [[r2_buckets]]
@@ -28,6 +28,7 @@ max_batch_timeout = 30
 [assets]
 directory = "../web/dist"
 not_found_handling = "single-page-application"
+binding = "ASSETS"
 
 [vars]
-GOOGLE_CLIENT_ID = ""
+GOOGLE_CLIENT_ID = "494613233168-ksrso4biqbtoaet59skiebgpahoro29s.apps.googleusercontent.com"

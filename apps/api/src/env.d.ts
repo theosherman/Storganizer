@@ -3,6 +3,7 @@ export interface Env {
   STORAGE: R2Bucket;
   IMAGE_QUEUE: Queue<{ item_id: string; photo_r2_key: string }>;
   AI: Ai;
+  ASSETS: Fetcher;
   ADMIN_EMAIL: string;
   GOOGLE_CLIENT_ID: string;
   GOOGLE_CLIENT_SECRET: string;
