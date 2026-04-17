@@ -20,6 +20,16 @@ app.use("/*", cors({
 
 app.get("/api/health", (c) => c.json({ ok: true }));
 
+app.get("/api/photos/*", async (c) => {
+  const key = c.req.path.replace("/api/photos/", "");
+  const object = await c.env.STORAGE.get(key);
+  if (!object) return c.notFound();
+  const headers = new Headers();
+  headers.set("Content-Type", object.httpMetadata?.contentType || "image/jpeg");
+  headers.set("Cache-Control", "public, max-age=31536000, immutable");
+  return new Response(object.body, { headers });
+});
+
 app.use("/api/*", authMiddleware);
 
 app.route("/api/auth", auth);
