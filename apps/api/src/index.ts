@@ -7,6 +7,7 @@ import { locations } from "./routes/locations";
 import { containers } from "./routes/containers";
 import { items } from "./routes/items";
 import { admin } from "./routes/admin";
+import { handleImageQueue } from "./queue/consumer";
 
 type AuthVariables = { userId: string };
 
@@ -30,7 +31,7 @@ app.route("/api/admin", admin);
 export default {
   fetch: app.fetch,
   async queue(batch: MessageBatch<{ item_id: string; photo_r2_key: string }>, env: Env) {
-    // Queue consumer — implemented in Task 14
+    await handleImageQueue(batch, env);
   },
 };
 
