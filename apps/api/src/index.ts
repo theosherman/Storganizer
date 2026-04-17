@@ -6,6 +6,7 @@ import { auth } from "./routes/auth";
 import { locations } from "./routes/locations";
 import { containers } from "./routes/containers";
 import { items } from "./routes/items";
+import { admin } from "./routes/admin";
 
 type AuthVariables = { userId: string };
 
@@ -24,6 +25,7 @@ app.route("/api/auth", auth);
 app.route("/api/locations", locations);
 app.route("/api/containers", containers);
 app.route("/api/items", items);
+app.route("/api/admin", admin);
 
 export default {
   fetch: app.fetch,
