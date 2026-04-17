@@ -1,6 +1,10 @@
+<script setup lang="ts">
+import PhotoUploader from "@/components/PhotoUploader.vue";
+</script>
+
 <template>
-  <div class="p-6">
-    <h2 class="text-xl font-bold">Add Items</h2>
-    <p class="text-gray-500 mt-2">Coming soon</p>
+  <div class="p-6 max-w-2xl mx-auto">
+    <h2 class="text-xl font-bold mb-6">Add Items</h2>
+    <PhotoUploader />
   </div>
 </template>
