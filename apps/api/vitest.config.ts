@@ -12,6 +12,7 @@ export default defineWorkersProject(async () => {
       poolOptions: {
         workers: {
           singleWorker: true,
+          isolatedStorage: false,
           wrangler: { configPath: "./wrangler.toml" },
           miniflare: {
             bindings: { TEST_MIGRATIONS: migrations },

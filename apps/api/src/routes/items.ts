@@ -1,9 +1,46 @@
 import { Hono } from "hono";
 import type { Env } from "../env";
+import { ulid } from "../lib/ulid";
 
 type AuthVariables = { userId: string };
 
 const items = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
+
+items.post("/upload", async (c) => {
+  const userId = c.get("userId");
+
+  const formData = await c.req.formData();
+  const photo = formData.get("photo");
+  if (!photo || !(photo instanceof File)) {
+    return c.json({ error: "Photo is required" }, 400);
+  }
+
+  const itemId = ulid();
+  const photoId = ulid();
+  const ext = photo.name.split(".").pop() || "jpg";
+  const r2Key = `${userId}/${itemId}/${photoId}.${ext}`;
+
+  const arrayBuffer = await photo.arrayBuffer();
+  await c.env.STORAGE.put(r2Key, arrayBuffer, {
+    httpMetadata: { contentType: photo.type },
+  });
+
+  await c.env.DB.prepare(
+    "INSERT INTO items (id, user_id, name, status) VALUES (?, ?, 'Processing...', 'processing')"
+  ).bind(itemId, userId).run();
+
+  await c.env.DB.prepare(
+    "INSERT INTO item_photos (id, item_id, r2_key) VALUES (?, ?, ?)"
+  ).bind(photoId, itemId, r2Key).run();
+
+  await c.env.IMAGE_QUEUE.send({ item_id: itemId, photo_r2_key: r2Key });
+
+  const item = await c.env.DB.prepare(
+    "SELECT id, name, ai_label, status, container_id, created_at FROM items WHERE id = ?"
+  ).bind(itemId).first();
+
+  return c.json({ item }, 201);
+});
 
 items.get("/", async (c) => {
   const userId = c.get("userId");
