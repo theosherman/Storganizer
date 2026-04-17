@@ -3,6 +3,7 @@ import { cors } from "hono/cors";
 import type { Env } from "./env";
 import { locations } from "./routes/locations";
 import { containers } from "./routes/containers";
+import { items } from "./routes/items";
 
 type AuthVariables = { userId: string };
 
@@ -30,6 +31,7 @@ app.use("/api/*", async (c, next) => {
 
 app.route("/api/locations", locations);
 app.route("/api/containers", containers);
+app.route("/api/items", items);
 
 export default {
   fetch: app.fetch,
