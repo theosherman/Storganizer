@@ -6,4 +6,9 @@ dist/
 .worktrees/
 .mf/
 *.local
+
+# Playwright
+apps/web/playwright-report/
+apps/web/test-results/
+
 /docs
