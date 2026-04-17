@@ -13,7 +13,7 @@ type AuthVariables = { userId: string };
 
 const app = new Hono<{ Bindings: Env; Variables: AuthVariables }>();
 
-app.use("/*", cors({
+app.use("/api/*", cors({
   origin: (origin) => origin,
   credentials: true,
 }));

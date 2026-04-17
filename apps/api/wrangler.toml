@@ -25,9 +25,9 @@ queue = "storganizer-image-queue"
 max_batch_size = 10
 max_batch_timeout = 30
 
+[assets]
+directory = "../web/dist"
+not_found_handling = "single-page-application"
+
 [vars]
-ADMIN_EMAIL = "admin@example.com"
 GOOGLE_CLIENT_ID = ""
-GOOGLE_CLIENT_SECRET = ""
-JWT_SECRET = "dev-secret-change-in-production"
-FRONTEND_URL = "http://localhost:5173"

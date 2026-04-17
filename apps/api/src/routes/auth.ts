@@ -54,7 +54,7 @@ auth.get("/google/callback", async (c) => {
   ).bind(googleUser.email).first();
 
   if (!isAdmin && !isAllowed) {
-    return c.redirect(`${c.env.FRONTEND_URL}/login?error=not_allowed`);
+    return c.redirect(`${new URL(c.req.url).origin}/login?error=not_allowed`);
   }
 
   const existingUser = await c.env.DB.prepare(
@@ -84,7 +84,7 @@ auth.get("/google/callback", async (c) => {
     maxAge: 7 * 24 * 3600,
   });
 
-  return c.redirect(c.env.FRONTEND_URL);
+  return c.redirect(new URL(c.req.url).origin);
 });
 
 auth.get("/me", async (c) => {
