@@ -4,6 +4,10 @@ import { computed } from "vue";
 
 const route = useRoute();
 const error = computed(() => route.query.error as string | undefined);
+
+function signIn() {
+  window.location.href = "/api/auth/google";
+}
 </script>
 
 <template>
@@ -18,8 +22,8 @@ const error = computed(() => route.query.error as string | undefined);
         Your account is not authorized. Ask an admin for an invite.
       </div>
 
-      <a
-        href="/api/auth/google"
+      <button
+        @click="signIn"
         class="flex items-center justify-center gap-3 w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg font-medium hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors"
       >
         <svg class="w-5 h-5" viewBox="0 0 24 24">
@@ -29,7 +33,7 @@ const error = computed(() => route.query.error as string | undefined);
           <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
         </svg>
         Sign in with Google
-      </a>
+      </button>
     </div>
   </div>
 </template>
