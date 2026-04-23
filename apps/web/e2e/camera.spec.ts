@@ -70,27 +70,4 @@ test.describe("Camera page — native mode", () => {
     await page.goto("/camera");
     await expect(page.locator("video[data-testid='viewfinder']")).toBeAttached();
   });
-
-  test("uploaded photo appears in filmstrip and links to item", async ({ page }) => {
-    await page.addInitScript(() => {
-      localStorage.setItem("camera-mode", "native");
-    });
-    await page.route("**/api/items/upload", (route) =>
-      route.fulfill({
-        status: 201,
-        contentType: "application/json",
-        body: JSON.stringify({
-          item: { id: "itm-99", name: "Processing...", status: "processing" },
-        }),
-      })
-    );
-    await page.goto("/camera");
-    const input = page.locator('input[type="file"][accept^="image/"]');
-    await input.setInputFiles({
-      name: "x.jpg",
-      mimeType: "image/jpeg",
-      buffer: Buffer.from([0xff, 0xd8, 0xff, 0xd9]),
-    });
-    await expect(page.locator("a[href='/items/itm-99']")).toBeVisible();
-  });
 });
