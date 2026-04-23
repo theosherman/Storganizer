@@ -1,134 +1,169 @@
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { api } from "@/composables/useApi";
+import { useItems } from "@/composables/useItems";
 import { useContainers } from "@/composables/useContainers";
+import { useLocations } from "@/composables/useLocations";
+import { useDefaultContainer, useDefaultLocation } from "@/composables/useDefaults";
+import EntityCombobox from "@/components/EntityCombobox.vue";
 
-interface ItemDetail {
+const route = useRoute();
+const router = useRouter();
+const { updateItem, deleteItem } = useItems();
+const { containers, fetchAll: fetchContainers, create: createContainer } = useContainers();
+const { locations, fetchAll: fetchLocations, create: createLocation } = useLocations();
+
+const defaultContainer = useDefaultContainer();
+const defaultLocation = useDefaultLocation();
+
+interface DetailPhoto { id: string; r2_key: string; thumbnail_url: string | null; created_at: string }
+interface DetailItem {
   id: string;
   name: string;
-  ai_label: string | null;
   description: string | null;
   status: string;
   container_id: string | null;
   container_name: string | null;
   location_id: string | null;
   location_name: string | null;
-  created_at: string;
-  photos: { id: string; r2_key: string; thumbnail_url: string | null }[];
+  photos: DetailPhoto[];
 }
 
-const route = useRoute();
-const router = useRouter();
-const { containers, fetchAll: fetchContainers } = useContainers();
-
-const item = ref<ItemDetail | null>(null);
-const editName = ref("");
-const editDescription = ref("");
-const editContainerId = ref<string | null>(null);
+const item = ref<DetailItem | null>(null);
+const name = ref("");
+const containerId = ref<string | null>(null);
+const locationId = ref<string | null>(null);
 const saving = ref(false);
+const error = ref<string | null>(null);
 
-onMounted(async () => {
-  const data = await api<{ item: ItemDetail }>(`/api/items/${route.params.id}`);
+async function load() {
+  const res = await fetch(`/api/items/${route.params.id}`, { credentials: "include" });
+  if (!res.ok) {
+    router.replace("/");
+    return;
+  }
+  const data = (await res.json()) as { item: DetailItem };
   item.value = data.item;
-  editName.value = data.item.name;
-  editDescription.value = data.item.description || "";
-  editContainerId.value = data.item.container_id;
-  fetchContainers();
-});
+  name.value = data.item.name;
+  containerId.value = data.item.container_id;
+  locationId.value = data.item.location_id;
+}
+
+function applyContainer(id: string | null) {
+  containerId.value = id;
+  defaultContainer.value = id;
+  if (id) {
+    const c = containers.value.find((x) => x.id === id);
+    if (c?.location_id) {
+      locationId.value = c.location_id;
+      defaultLocation.value = c.location_id;
+    }
+  }
+}
+function applyLocation(id: string | null) {
+  locationId.value = id;
+  defaultLocation.value = id;
+  if (id && containerId.value) {
+    const c = containers.value.find((x) => x.id === containerId.value);
+    if (c && c.location_id !== id) {
+      containerId.value = null;
+      defaultContainer.value = null;
+    }
+  }
+}
+async function createContainerAt(value: string) {
+  return await createContainer(value, locationId.value ?? undefined);
+}
+async function createLocationAt(value: string) {
+  return await createLocation(value);
+}
 
 async function save() {
   if (!item.value) return;
   saving.value = true;
+  error.value = null;
   try {
-    const data = await api<{ item: ItemDetail }>(`/api/items/${item.value.id}`, {
-      method: "PATCH",
-      body: JSON.stringify({
-        name: editName.value,
-        description: editDescription.value || null,
-        container_id: editContainerId.value,
-      }),
+    await updateItem(item.value.id, {
+      name: name.value.trim(),
+      container_id: containerId.value,
     });
-    item.value = { ...item.value, ...data.item };
+    router.back();
+  } catch {
+    error.value = "Save failed";
   } finally {
     saving.value = false;
   }
 }
 
 async function remove() {
-  if (!item.value || !confirm("Delete this item?")) return;
-  await api(`/api/items/${item.value.id}`, { method: "DELETE" });
-  router.push("/");
+  if (!item.value) return;
+  if (!window.confirm("Delete this item?")) return;
+  try {
+    await deleteItem(item.value.id);
+    router.replace("/");
+  } catch {
+    error.value = "Delete failed";
+  }
 }
+
+onMounted(async () => {
+  await Promise.all([load(), fetchContainers(), fetchLocations()]);
+});
 </script>
 
 <template>
-  <div v-if="item" class="p-6 max-w-2xl mx-auto">
-    <div v-if="item.photos.length > 0" class="mb-6 space-y-3">
-      <div
-        v-for="photo in item.photos"
-        :key="photo.id"
-        class="rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800"
-      >
-        <img
-          :src="`/api/photos/${photo.r2_key}`"
-          class="w-full max-h-96 object-contain"
-          alt=""
-        />
-      </div>
+  <div v-if="item" class="px-4 py-6 max-w-2xl mx-auto space-y-4">
+    <div class="aspect-square w-full bg-[var(--color-raised)] rounded-[var(--radius-card)] overflow-hidden">
+      <img
+        v-if="item.photos[0]"
+        :src="`/api/photos/${item.photos[0].r2_key}`"
+        class="w-full h-full object-cover"
+        alt=""
+      />
     </div>
 
-    <p v-if="item.ai_label && item.ai_label !== item.name" class="text-sm text-gray-500 mb-4">
-      AI identified as: <span class="italic">{{ item.ai_label }}</span>
-    </p>
+    <input
+      v-model="name"
+      data-testid="item-name"
+      type="text"
+      class="w-full px-3 py-2 bg-[var(--color-raised)] border border-[var(--color-border)] rounded-[var(--radius-input)] text-[var(--color-text)] text-lg focus:outline-none focus:border-[var(--color-accent)]"
+    />
 
-    <div class="space-y-4">
-      <div>
-        <label class="block text-sm font-medium mb-1">Name</label>
-        <input
-          v-model="editName"
-          class="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-        />
-      </div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+      <EntityCombobox
+        entity-label="location"
+        :list="locations"
+        :model-value="locationId"
+        :create-fn="createLocationAt"
+        @update:model-value="applyLocation"
+      />
+      <EntityCombobox
+        entity-label="container"
+        :list="containers.filter((c) => !locationId || c.location_id === locationId)"
+        :model-value="containerId"
+        :create-fn="createContainerAt"
+        @update:model-value="applyContainer"
+      />
+    </div>
 
-      <div>
-        <label class="block text-sm font-medium mb-1">Description</label>
-        <textarea
-          v-model="editDescription"
-          rows="3"
-          class="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          placeholder="Optional notes..."
-        />
-      </div>
+    <p v-if="error" class="text-sm text--[var(--color-danger)]">{{ error }}</p>
 
-      <div>
-        <label class="block text-sm font-medium mb-1">Container</label>
-        <select
-          v-model="editContainerId"
-          class="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-        >
-          <option :value="null">— None (unsorted) —</option>
-          <option v-for="c in containers" :key="c.id" :value="c.id">
-            {{ c.name }}<template v-if="c.location_name"> ({{ c.location_name }})</template>
-          </option>
-        </select>
-      </div>
-
-      <div class="flex gap-3">
-        <button
-          @click="save"
-          :disabled="saving"
-          class="px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 disabled:opacity-50"
-        >
-          {{ saving ? "Saving..." : "Save" }}
-        </button>
-        <button
-          @click="remove"
-          class="px-4 py-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-950 rounded-lg font-medium"
-        >
-          Delete
-        </button>
-      </div>
+    <div class="flex gap-2">
+      <button
+        type="button"
+        class="flex-1 py-2 bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)] rounded-[var(--radius-input)]"
+        :disabled="saving"
+        @click="save"
+      >
+        {{ saving ? "Saving…" : "Save" }}
+      </button>
+      <button
+        type="button"
+        class="py-2 px-4 border border-[var(--color-danger)] text-[var(--color-danger)] rounded-[var(--radius-input)]"
+        @click="remove"
+      >
+        Delete
+      </button>
     </div>
   </div>
 </template>
