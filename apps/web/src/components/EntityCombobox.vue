@@ -99,6 +99,7 @@ async function handleSelect(value: string | null | undefined) {
           class="flex-1 bg-transparent outline-none text-[var(--color-text)] placeholder:text-[var(--color-muted)]"
           :placeholder="`Pick a ${entityLabel}...`"
           :model-value="query"
+          :display-value="(id: unknown) => props.list.find((e) => e.id === id)?.name ?? (id ? String(id) : '')"
           @update:model-value="(v) => (query = String(v))"
           @focus="open = true"
           @click="open = true"
