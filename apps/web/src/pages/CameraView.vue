@@ -223,6 +223,14 @@ const shownContainers = computed(() =>
         class="hidden"
         @change="onFilePicked"
       />
+      <button
+        v-if="mode === 'continuous'"
+        type="button"
+        data-testid="shutter"
+        aria-label="Take photo"
+        class="absolute bottom-6 left-1/2 -translate-x-1/2 w-16 h-16 rounded-full bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)] border-4 border-[var(--color-text)]/20 shadow-lg z-10"
+        @click="onShutter"
+      ></button>
     </div>
 
     <div class="flex items-center gap-2 p-3 overflow-x-auto border-t border-[var(--color-border)]">
@@ -240,7 +248,7 @@ const shownContainers = computed(() =>
       </RouterLink>
     </div>
 
-    <div class="p-3 flex justify-end">
+    <div v-if="mode !== 'continuous'" class="p-3 flex justify-end">
       <button
         type="button"
         data-testid="shutter"

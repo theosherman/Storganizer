@@ -71,6 +71,34 @@ test.describe("Camera page — native mode", () => {
     await expect(page.locator("video[data-testid='viewfinder']")).toBeAttached();
   });
 
+  test("continuous mode shutter overlays the viewfinder as a FAB", async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem("camera-mode", "continuous");
+      const track = { stop() {} };
+      const stream = { getTracks: () => [track] };
+      Object.defineProperty(navigator, "mediaDevices", {
+        configurable: true,
+        value: { getUserMedia: () => Promise.resolve(stream) },
+      });
+    });
+    await page.setViewportSize({ width: 375, height: 640 });
+    await page.goto("/camera");
+    const shutter = page.getByTestId("shutter");
+    const video = page.locator("video[data-testid='viewfinder']");
+    await expect(shutter).toBeVisible();
+    const shutterBox = await shutter.boundingBox();
+    const videoBox = await video.boundingBox();
+    expect(shutterBox).not.toBeNull();
+    expect(videoBox).not.toBeNull();
+    // FAB sits within the video's vertical extent (overlaps the canvas).
+    expect(shutterBox!.y).toBeGreaterThanOrEqual(videoBox!.y);
+    expect(shutterBox!.y + shutterBox!.height).toBeLessThanOrEqual(
+      videoBox!.y + videoBox!.height + 1
+    );
+    // And it's within the viewport.
+    expect(shutterBox!.y + shutterBox!.height).toBeLessThanOrEqual(640);
+  });
+
   test("uploaded photo appears in filmstrip and links to item", async ({ page }) => {
     await page.addInitScript(() => {
       localStorage.setItem("camera-mode", "native");
