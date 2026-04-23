@@ -1,5 +1,15 @@
 import type { Env } from "../env";
 
+function bytesToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+  }
+  return btoa(binary);
+}
+
 export async function handleImageQueue(
   batch: MessageBatch<{ item_id: string; photo_r2_key: string }>,
   env: Env
@@ -11,17 +21,23 @@ export async function handleImageQueue(
       if (!object) throw new Error(`Image not found: ${photo_r2_key}`);
 
       const imageBytes = await object.arrayBuffer();
-      const imageArray = [...new Uint8Array(imageBytes)];
+      const contentType = object.httpMetadata?.contentType || "image/jpeg";
+      const dataUri = `data:${contentType};base64,${bytesToBase64(imageBytes)}`;
 
-      const aiResponse = await env.AI.run("@cf/meta/llama-3.2-11b-vision-instruct", {
+      const aiResponse = await env.AI.run("@cf/meta/llama-4-scout-17b-16e-instruct", {
         messages: [
           {
             role: "user",
-            content: "What is this object? Provide a short, specific label (e.g. 'USB-C to Lightning cable' or 'Arduino Nano microcontroller'). Just the label, nothing else.",
+            content: [
+              {
+                type: "text",
+                text: "What is this object? Provide a short, specific label (e.g. 'USB-C to Lightning cable' or 'Arduino Nano microcontroller'). Just the label, nothing else.",
+              },
+              { type: "image_url", image_url: { url: dataUri } },
+            ],
           },
         ],
-        image: imageArray,
-      }) as { response?: string };
+      } as unknown as AiTextGenerationInput) as { response?: string };
 
       const label = aiResponse.response?.trim() || "Unknown item";
 
