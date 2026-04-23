@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { useRoute } from "vue-router";
-import { computed } from "vue";
+import { computed, ref } from "vue";
 
 const route = useRoute();
 const error = computed(() => route.query.error as string | undefined);
+const isHovering = ref(false);
 
 function signIn() {
   window.location.href = "/api/auth/google";
@@ -11,20 +12,27 @@ function signIn() {
 </script>
 
 <template>
-  <div class="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-950">
-    <div class="w-full max-w-sm p-8">
-      <h1 class="text-2xl font-bold text-center mb-2">Storganizer</h1>
-      <p class="text-gray-500 dark:text-gray-400 text-center mb-8">
-        Organize your stuff, find it later.
-      </p>
+  <div class="min-h-screen flex items-center justify-center px-4" :style="{ backgroundColor: 'var(--color-bg)' }">
+    <div class="w-full max-w-sm bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[var(--radius-card)] p-8 space-y-6" :style="{ color: 'var(--color-text)' }">
+      <div class="text-center space-y-2">
+        <h1 class="text-2xl font-bold" :style="{ color: 'var(--color-accent)' }">Storganizer</h1>
+        <p class="text-sm" :style="{ color: 'var(--color-muted)' }">Organize your stuff, find it later.</p>
+      </div>
 
-      <div v-if="error === 'not_allowed'" class="mb-4 p-3 bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300 rounded-lg text-sm">
+      <div v-if="error === 'not_allowed'" class="p-3 rounded-[var(--radius-input)] text-sm" :style="{ backgroundColor: 'rgba(220, 38, 38, 0.1)', color: 'var(--color-danger)' }">
         Your account is not authorized. Ask an admin for an invite.
       </div>
 
       <button
         @click="signIn"
-        class="flex items-center justify-center gap-3 w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg font-medium hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors"
+        type="button"
+        class="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-[var(--radius-input)] font-medium transition-colors"
+        :style="{
+          backgroundColor: isHovering ? 'var(--color-accent-hover)' : 'var(--color-accent)',
+          color: 'var(--color-bg)'
+        }"
+        @mouseenter="isHovering = true"
+        @mouseleave="isHovering = false"
       >
         <svg class="w-5 h-5" viewBox="0 0 24 24">
           <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/>
