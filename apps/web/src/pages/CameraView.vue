@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onBeforeUnmount, ref, computed, watch } from "vue";
+import { onMounted, onBeforeUnmount, ref, reactive, computed, watch } from "vue";
 import { useContainers } from "@/composables/useContainers";
 import { useLocations } from "@/composables/useLocations";
 import {
@@ -52,12 +52,12 @@ async function createLocationAt(name: string) {
 
 async function uploadBlob(blob: Blob, filename: string) {
   const blobUrl = URL.createObjectURL(blob);
-  const thumb: Thumb = {
+  const thumb = reactive<Thumb>({
     id: `tmp-${Date.now()}-${Math.random()}`,
     blobUrl,
     status: "uploading",
     itemId: null,
-  };
+  });
   thumbs.value = [thumb, ...thumbs.value].slice(0, 5);
   try {
     const fd = new FormData();
@@ -85,7 +85,12 @@ async function startStream() {
     });
     stream.value = s;
     if (videoEl.value) {
-      videoEl.value.srcObject = s;
+      try {
+        videoEl.value.srcObject = s;
+      } catch {
+        // Mocked/synthetic streams may not satisfy HTMLMediaElement.srcObject;
+        // don't fail the whole startStream path over a playback binding.
+      }
       await videoEl.value.play().catch(() => {});
     }
   } catch {

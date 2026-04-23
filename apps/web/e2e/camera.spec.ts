@@ -86,11 +86,13 @@ test.describe("Camera page — native mode", () => {
     );
     await page.goto("/camera");
     const input = page.locator('input[type="file"][accept^="image/"]');
+    const uploadWait = page.waitForResponse("**/api/items/upload");
     await input.setInputFiles({
       name: "x.jpg",
       mimeType: "image/jpeg",
       buffer: Buffer.from([0xff, 0xd8, 0xff, 0xd9]),
     });
+    await uploadWait;
     await expect(page.locator("a[href='/items/itm-99']")).toBeVisible();
   });
 });
