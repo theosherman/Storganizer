@@ -42,4 +42,32 @@ test.describe("Camera page — native mode", () => {
     });
     await expect(page.getByTestId("shutter")).toBeVisible();
   });
+
+  test("falls back to native when getUserMedia rejects", async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem("camera-mode", "continuous");
+      Object.defineProperty(navigator, "mediaDevices", {
+        configurable: true,
+        value: { getUserMedia: () => Promise.reject(new Error("NotAllowedError")) },
+      });
+    });
+    await page.goto("/camera");
+    await expect(page.getByTestId("camera-fallback-notice")).toBeVisible();
+    const v = await page.evaluate(() => localStorage.getItem("camera-mode"));
+    expect(v).toBe("native");
+  });
+
+  test("continuous mode renders a <video> element when getUserMedia resolves", async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem("camera-mode", "continuous");
+      const track = { stop() {} };
+      const stream = { getTracks: () => [track] };
+      Object.defineProperty(navigator, "mediaDevices", {
+        configurable: true,
+        value: { getUserMedia: () => Promise.resolve(stream) },
+      });
+    });
+    await page.goto("/camera");
+    await expect(page.locator("video[data-testid='viewfinder']")).toBeAttached();
+  });
 });

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref, computed } from "vue";
+import { onMounted, onBeforeUnmount, ref, computed, watch } from "vue";
 import { useContainers } from "@/composables/useContainers";
 import { useLocations } from "@/composables/useLocations";
 import {
@@ -24,6 +24,10 @@ interface Thumb {
 }
 const thumbs = ref<Thumb[]>([]);
 const fileInput = ref<HTMLInputElement | null>(null);
+const videoEl = ref<HTMLVideoElement | null>(null);
+const canvasEl = ref<HTMLCanvasElement | null>(null);
+const stream = ref<MediaStream | null>(null);
+const fallbackNotice = ref<string | null>(null);
 
 function applyContainer(id: string | null) {
   defaultContainer.value = id;
@@ -73,9 +77,46 @@ async function uploadBlob(blob: Blob, filename: string) {
   }
 }
 
+async function startStream() {
+  fallbackNotice.value = null;
+  try {
+    const s = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: "environment" },
+    });
+    stream.value = s;
+    if (videoEl.value) {
+      videoEl.value.srcObject = s;
+      await videoEl.value.play().catch(() => {});
+    }
+  } catch {
+    fallbackNotice.value = "Camera unavailable — switched to Native mode.";
+    mode.value = "native";
+  }
+}
+
+function stopStream() {
+  stream.value?.getTracks().forEach((t) => t.stop());
+  stream.value = null;
+}
+
+async function captureFromStream() {
+  if (!videoEl.value || !canvasEl.value) return;
+  const v = videoEl.value;
+  const c = canvasEl.value;
+  c.width = v.videoWidth || 1280;
+  c.height = v.videoHeight || 960;
+  const ctx = c.getContext("2d");
+  if (!ctx) return;
+  ctx.drawImage(v, 0, 0, c.width, c.height);
+  const blob: Blob | null = await new Promise((resolve) =>
+    c.toBlob((b) => resolve(b), "image/jpeg", 0.9)
+  );
+  if (blob) await uploadBlob(blob, `shot-${Date.now()}.jpg`);
+}
+
 function onShutter() {
-  // Native mode only in this task; Task 14 branches on continuous.
-  fileInput.value?.click();
+  if (mode.value === "continuous") captureFromStream();
+  else fileInput.value?.click();
 }
 async function onFilePicked(e: Event) {
   const target = e.target as HTMLInputElement;
@@ -86,7 +127,15 @@ async function onFilePicked(e: Event) {
 
 onMounted(async () => {
   await Promise.all([fetchContainers(), fetchLocations()]);
+  if (mode.value === "continuous") await startStream();
 });
+
+watch(mode, async (next) => {
+  if (next === "continuous") await startStream();
+  else stopStream();
+});
+
+onBeforeUnmount(stopStream);
 
 const shownContainers = computed(() =>
   containers.value.filter((c) => !defaultLocation.value || c.location_id === defaultLocation.value)
@@ -142,9 +191,24 @@ const shownContainers = computed(() =>
     </div>
 
     <div class="flex-1 flex items-center justify-center bg-black relative">
-      <p class="text-[var(--color-muted)] text-sm">
-        {{ mode === "native" ? "Tap the shutter to take a photo" : "Viewfinder (Task 14)" }}
+      <p
+        v-if="fallbackNotice"
+        data-testid="camera-fallback-notice"
+        class="absolute top-2 left-1/2 -translate-x-1/2 bg-[var(--color-raised)] border border-[var(--color-border)] rounded-[var(--radius-card)] px-3 py-1 text-sm z-10"
+      >{{ fallbackNotice }}</p>
+      <video
+        v-if="mode === 'continuous'"
+        ref="videoEl"
+        data-testid="viewfinder"
+        autoplay
+        playsinline
+        muted
+        class="w-full h-full object-cover"
+      ></video>
+      <p v-else class="text-[var(--color-muted)] text-sm">
+        Tap the shutter to take a photo
       </p>
+      <canvas ref="canvasEl" class="hidden"></canvas>
       <input
         ref="fileInput"
         type="file"
