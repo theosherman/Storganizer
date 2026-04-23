@@ -15,6 +15,19 @@ items.post("/upload", async (c) => {
     return c.json({ error: "Photo is required" }, 400);
   }
 
+  const containerIdRaw = formData.get("container_id");
+  const containerId =
+    typeof containerIdRaw === "string" && containerIdRaw.length > 0 ? containerIdRaw : null;
+
+  if (containerId) {
+    const container = await c.env.DB.prepare(
+      "SELECT id FROM containers WHERE id = ? AND user_id = ?"
+    ).bind(containerId, userId).first();
+    if (!container) {
+      return c.json({ error: "Container not found" }, 400);
+    }
+  }
+
   const itemId = ulid();
   const photoId = ulid();
   const ext = photo.name.split(".").pop() || "jpg";
@@ -26,8 +39,8 @@ items.post("/upload", async (c) => {
   });
 
   await c.env.DB.prepare(
-    "INSERT INTO items (id, user_id, name, status) VALUES (?, ?, 'Processing...', 'processing')"
-  ).bind(itemId, userId).run();
+    "INSERT INTO items (id, user_id, name, status, container_id) VALUES (?, ?, 'Processing...', 'processing', ?)"
+  ).bind(itemId, userId, containerId).run();
 
   await c.env.DB.prepare(
     "INSERT INTO item_photos (id, item_id, r2_key) VALUES (?, ?, ?)"
@@ -36,7 +49,10 @@ items.post("/upload", async (c) => {
   await c.env.IMAGE_QUEUE.send({ item_id: itemId, photo_r2_key: r2Key });
 
   const item = await c.env.DB.prepare(
-    "SELECT id, name, ai_label, status, container_id, created_at FROM items WHERE id = ?"
+    `SELECT i.id, i.name, i.ai_label, i.status, i.container_id, i.created_at,
+     c.name as container_name
+     FROM items i LEFT JOIN containers c ON c.id = i.container_id
+     WHERE i.id = ?`
   ).bind(itemId).first();
 
   return c.json({ item }, 201);
