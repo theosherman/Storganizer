@@ -6,10 +6,11 @@ defineProps<{ item: Item }>();
 
 <template>
   <RouterLink
+    data-testid="item-card"
     :to="`/items/${item.id}`"
-    class="flex items-center gap-4 p-4 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 hover:border-indigo-300 dark:hover:border-indigo-700 transition-colors"
+    class="flex items-center gap-4 p-3 bg-[var(--color-surface)] rounded-[var(--radius-card)] border border-[var(--color-border)] hover:border-[var(--color-accent)] transition-colors"
   >
-    <div class="w-14 h-14 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center text-gray-400 shrink-0 overflow-hidden">
+    <div class="w-14 h-14 bg-[var(--color-raised)] rounded-[var(--radius-input)] flex items-center justify-center text-[var(--color-muted)] shrink-0 overflow-hidden">
       <img
         v-if="item.thumbnail_key"
         :src="`/api/photos/${item.thumbnail_key}`"
@@ -21,15 +22,14 @@ defineProps<{ item: Item }>();
       </svg>
     </div>
     <div class="flex-1 min-w-0">
-      <p class="font-medium truncate">
-        <span v-if="item.status === 'processing'" class="text-gray-400 italic">Processing...</span>
+      <p class="font-medium truncate text-[var(--color-text)]">
+        <span v-if="item.status === 'processing'" class="text-[var(--color-muted)] italic">Identifying…</span>
         <span v-else>{{ item.name }}</span>
       </p>
-      <p v-if="item.container_name" class="text-sm text-gray-500 dark:text-gray-400 truncate">
-        {{ item.container_name }}
-        <span v-if="item.location_name"> &rarr; {{ item.location_name }}</span>
+      <p v-if="item.container_name" class="text-sm text-[var(--color-muted)] truncate">
+        {{ item.container_name }}<span v-if="item.location_name"> &rarr; {{ item.location_name }}</span>
       </p>
-      <p v-else class="text-sm text-gray-400 italic">Unsorted</p>
+      <p v-else class="text-sm text-[var(--color-muted)] italic">Unsorted</p>
     </div>
   </RouterLink>
 </template>

@@ -18,35 +18,21 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="p-6 max-w-3xl mx-auto">
-    <div class="mb-6">
-      <input
-        v-model="query"
-        type="search"
-        placeholder="Search items, containers, locations..."
-        class="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl text-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-      />
-    </div>
+  <div class="px-4 py-6 max-w-3xl mx-auto">
+    <input
+      v-model="query"
+      type="search"
+      placeholder="Search items, containers, locations…"
+      class="w-full px-4 py-3 bg-[var(--color-raised)] border border-[var(--color-border)] rounded-[var(--radius-input)] text-lg text-[var(--color-text)] placeholder:text-[var(--color-muted)] focus:outline-none focus:border-[var(--color-accent)]"
+    />
 
-    <div v-if="loading && items.length === 0" class="text-center py-12 text-gray-500">
-      Searching...
+    <div v-if="loading && items.length === 0" class="text-center py-12 text-[var(--color-muted)]">
+      Searching…
     </div>
-
-    <div v-else-if="items.length === 0 && !query" class="text-center py-12">
-      <p class="text-gray-500 mb-4">No items yet. Start by adding some!</p>
-      <RouterLink
-        to="/add"
-        class="inline-flex px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700"
-      >
-        Add Items
-      </RouterLink>
+    <div v-else-if="items.length === 0" class="text-center py-12">
+      <p class="text-[var(--color-muted)] mb-4">No items yet.</p>
     </div>
-
-    <div v-else-if="items.length === 0 && query" class="text-center py-12 text-gray-500">
-      No results for "{{ query }}"
-    </div>
-
-    <div v-else class="space-y-3">
+    <div v-else class="mt-6 space-y-2">
       <ItemCard v-for="item in items" :key="item.id" :item="item" />
     </div>
   </div>
