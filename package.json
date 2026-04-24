@@ -4,6 +4,7 @@
   "scripts": {
     "dev": "pnpm -r --parallel dev",
     "build": "pnpm --filter @storganizer/web build && pnpm --filter @storganizer/api build",
+    "deploy": "pnpm --filter @storganizer/web build && pnpm --filter @storganizer/api exec wrangler deploy",
     "test": "pnpm -r test",
     "test:e2e": "pnpm --filter @storganizer/web test:e2e"
   },
