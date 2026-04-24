@@ -10,6 +10,8 @@ const menuOpen = ref(false);
 const menuRef = ref<HTMLElement | null>(null);
 onClickOutside(menuRef, () => (menuOpen.value = false));
 
+const appVersion = __APP_VERSION__;
+
 function isActive(path: string) {
   return route.path === path;
 }
@@ -72,6 +74,9 @@ function isActive(path: string) {
           >
             Logout
           </button>
+          <div class="px-3 py-2 text-xs text-[var(--color-muted)] border-t border-[var(--color-border)]">
+            version {{ appVersion }}
+          </div>
         </div>
       </div>
     </div>
