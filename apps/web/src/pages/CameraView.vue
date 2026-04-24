@@ -9,6 +9,7 @@ import {
 } from "@/composables/useDefaults";
 import EntityCombobox from "@/components/EntityCombobox.vue";
 import { resizeAndCompress } from "@/lib/resizeAndCompress";
+import { uploadWithProgress } from "@/lib/uploadWithProgress";
 
 const mode = useCameraMode();
 const defaultContainer = useDefaultContainer();
@@ -20,7 +21,9 @@ const { locations, fetchAll: fetchLocations, create: createLocation } = useLocat
 interface Thumb {
   id: string;
   blobUrl: string;
+  blob: Blob;
   status: "uploading" | "processing" | "ready" | "error";
+  progress: number;
   itemId: string | null;
 }
 const thumbs = ref<Thumb[]>([]);
@@ -52,12 +55,20 @@ async function createLocationAt(name: string) {
 }
 
 async function uploadBlob(rawBlob: Blob, filename: string) {
-  const blob = await resizeAndCompress(rawBlob, { maxDim: 1024, quality: 0.8 });
+  let blob: Blob;
+  try {
+    blob = await resizeAndCompress(rawBlob, { maxDim: 1024, quality: 0.8 });
+  } catch {
+    // Source bytes weren't a decodable image (e.g. corrupt capture); upload raw.
+    blob = rawBlob;
+  }
   const blobUrl = URL.createObjectURL(blob);
   const thumb = reactive<Thumb>({
     id: `tmp-${Date.now()}-${Math.random()}`,
     blobUrl,
+    blob,
     status: "uploading",
+    progress: 0,
     itemId: null,
   });
   thumbs.value = [thumb, ...thumbs.value].slice(0, 5);
@@ -65,14 +76,15 @@ async function uploadBlob(rawBlob: Blob, filename: string) {
     const fd = new FormData();
     fd.append("photo", blob, filename);
     if (defaultContainer.value) fd.append("container_id", defaultContainer.value);
-    const res = await fetch("/api/items/upload", {
-      method: "POST",
-      credentials: "include",
-      body: fd,
+    const res = await uploadWithProgress("/api/items/upload", fd, {
+      onProgress: (p) => {
+        thumb.progress = p;
+      },
     });
     if (!res.ok) throw new Error("upload failed");
-    const data = (await res.json()) as { item: { id: string; status: string } };
+    const data = await res.json<{ item: { id: string; status: string } }>();
     thumb.itemId = data.item.id;
+    thumb.progress = 1;
     thumb.status = data.item.status === "ready" ? "ready" : "processing";
   } catch {
     thumb.status = "error";
@@ -243,6 +255,18 @@ const shownContainers = computed(() =>
         class="w-12 h-12 bg-[var(--color-raised)] rounded-[var(--radius-input)] overflow-hidden shrink-0 relative"
       >
         <img :src="t.blobUrl" class="w-full h-full object-cover" alt="" />
+        <span
+          v-if="t.status === 'uploading' || t.status === 'processing'"
+          role="progressbar"
+          :aria-valuenow="Math.round(t.progress * 100)"
+          aria-valuemin="0"
+          aria-valuemax="100"
+          class="absolute inset-y-0 left-0 pointer-events-none transition-[width] duration-100"
+          :style="{
+            width: `${t.progress * 100}%`,
+            backgroundColor: 'rgba(34, 197, 94, 0.35)',
+          }"
+        ></span>
         <span
           v-if="t.status === 'error'"
           class="absolute inset-0 bg-[var(--color-danger)]/60 flex items-center justify-center text-xs"
