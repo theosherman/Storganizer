@@ -54,6 +54,30 @@ async function createLocationAt(name: string) {
   return await createLocation(name);
 }
 
+async function retryThumb(thumb: Thumb) {
+  if (thumb.status !== "error") return;
+  thumb.status = "uploading";
+  thumb.progress = 0;
+  thumb.itemId = null;
+  try {
+    const fd = new FormData();
+    fd.append("photo", thumb.blob, `retry-${thumb.id}.jpg`);
+    if (defaultContainer.value) fd.append("container_id", defaultContainer.value);
+    const res = await uploadWithProgress("/api/items/upload", fd, {
+      onProgress: (p) => {
+        thumb.progress = p;
+      },
+    });
+    if (!res.ok) throw new Error("upload failed");
+    const data = await res.json<{ item: { id: string; status: string } }>();
+    thumb.itemId = data.item.id;
+    thumb.progress = 1;
+    thumb.status = data.item.status === "ready" ? "ready" : "processing";
+  } catch {
+    thumb.status = "error";
+  }
+}
+
 async function uploadBlob(rawBlob: Blob, filename: string) {
   const blob = await resizeAndCompress(rawBlob, { maxDim: 1024, quality: 0.8 });
   const blobUrl = URL.createObjectURL(blob);
@@ -242,30 +266,39 @@ const shownContainers = computed(() =>
     </div>
 
     <div class="flex items-center gap-2 p-3 overflow-x-auto border-t border-[var(--color-border)]">
-      <RouterLink
-        v-for="t in thumbs"
-        :key="t.id"
-        :to="t.itemId ? `/items/${t.itemId}` : ''"
-        class="w-12 h-12 bg-[var(--color-raised)] rounded-[var(--radius-input)] overflow-hidden shrink-0 relative"
-      >
-        <img :src="t.blobUrl" class="w-full h-full object-cover" alt="" />
-        <span
-          v-if="t.status === 'uploading' || t.status === 'processing'"
-          role="progressbar"
-          :aria-valuenow="Math.round(t.progress * 100)"
-          aria-valuemin="0"
-          aria-valuemax="100"
-          class="absolute inset-y-0 left-0 pointer-events-none transition-[width] duration-100"
-          :style="{
-            width: `${t.progress * 100}%`,
-            backgroundColor: 'rgba(34, 197, 94, 0.35)',
-          }"
-        ></span>
-        <span
+      <template v-for="t in thumbs" :key="t.id">
+        <button
           v-if="t.status === 'error'"
-          class="absolute inset-0 bg-[var(--color-danger)]/60 flex items-center justify-center text-xs"
-        >!</span>
-      </RouterLink>
+          type="button"
+          aria-label="Retry upload"
+          class="w-12 h-12 bg-[var(--color-raised)] rounded-[var(--radius-input)] overflow-hidden shrink-0 relative"
+          @click="retryThumb(t)"
+        >
+          <img :src="t.blobUrl" class="w-full h-full object-cover" alt="" />
+          <span
+            class="absolute inset-0 bg-[var(--color-danger)]/60 flex items-center justify-center text-xs"
+          >Retry</span>
+        </button>
+        <RouterLink
+          v-else
+          :to="t.itemId ? `/items/${t.itemId}` : ''"
+          class="w-12 h-12 bg-[var(--color-raised)] rounded-[var(--radius-input)] overflow-hidden shrink-0 relative"
+        >
+          <img :src="t.blobUrl" class="w-full h-full object-cover" alt="" />
+          <span
+            v-if="t.status === 'uploading' || t.status === 'processing'"
+            role="progressbar"
+            :aria-valuenow="Math.round(t.progress * 100)"
+            aria-valuemin="0"
+            aria-valuemax="100"
+            class="absolute inset-y-0 left-0 pointer-events-none transition-[width] duration-100"
+            :style="{
+              width: `${t.progress * 100}%`,
+              backgroundColor: 'rgba(34, 197, 94, 0.35)',
+            }"
+          ></span>
+        </RouterLink>
+      </template>
     </div>
 
     <div v-if="mode !== 'continuous'" class="p-3 flex justify-end">

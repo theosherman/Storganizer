@@ -75,4 +75,41 @@ describe("POST /api/items/upload", () => {
     }, user.id);
     expect(res.status).toBe(400);
   });
+
+  it("flips status to 'upload_failed' if R2 put throws, and skips the queue", async () => {
+    const user = await createTestUser();
+
+    const formData = new FormData();
+    formData.append("photo", new Blob([PNG_BYTES], { type: "image/png" }), "test.png");
+
+    const originalPut = env.STORAGE.put.bind(env.STORAGE);
+    (env.STORAGE as any).put = async () => {
+      throw new Error("simulated R2 failure");
+    };
+
+    try {
+      const headers = new Headers();
+      headers.set("x-test-user-id", user.id);
+      const ctx = createExecutionContext();
+      const res = await app.request("/api/items/upload",
+        { method: "POST", headers, body: formData },
+        env, ctx
+      );
+      expect(res.status).toBe(201);
+      const data = await res.json() as any;
+      await waitOnExecutionContext(ctx);
+
+      const row = await env.DB.prepare(
+        "SELECT status FROM items WHERE id = ?"
+      ).bind(data.item.id).first<{ status: string }>();
+      expect(row!.status).toBe("upload_failed");
+
+      const photo = await env.DB.prepare(
+        "SELECT r2_key FROM item_photos WHERE item_id = ?"
+      ).bind(data.item.id).first();
+      expect(photo).toBeNull();
+    } finally {
+      (env.STORAGE as any).put = originalPut;
+    }
+  });
 });
