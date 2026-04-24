@@ -108,7 +108,7 @@ test.describe("Camera page — native mode", () => {
         status: 201,
         contentType: "application/json",
         body: JSON.stringify({
-          item: { id: "itm-99", name: "Processing...", status: "processing" },
+          item: { id: "itm-99", name: "Processing...", status: "uploading" },
         }),
       })
     );

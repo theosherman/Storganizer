@@ -32,21 +32,12 @@ items.post("/upload", async (c) => {
   const photoId = ulid();
   const ext = photo.name.split(".").pop() || "jpg";
   const r2Key = `${userId}/${itemId}/${photoId}.${ext}`;
-
+  const contentType = photo.type;
   const arrayBuffer = await photo.arrayBuffer();
-  await c.env.STORAGE.put(r2Key, arrayBuffer, {
-    httpMetadata: { contentType: photo.type },
-  });
 
   await c.env.DB.prepare(
-    "INSERT INTO items (id, user_id, name, status, container_id) VALUES (?, ?, 'Processing...', 'processing', ?)"
+    "INSERT INTO items (id, user_id, name, status, container_id) VALUES (?, ?, 'Processing...', 'uploading', ?)"
   ).bind(itemId, userId, containerId).run();
-
-  await c.env.DB.prepare(
-    "INSERT INTO item_photos (id, item_id, r2_key) VALUES (?, ?, ?)"
-  ).bind(photoId, itemId, r2Key).run();
-
-  await c.env.IMAGE_QUEUE.send({ item_id: itemId, photo_r2_key: r2Key });
 
   const item = await c.env.DB.prepare(
     `SELECT i.id, i.name, i.ai_label, i.status, i.container_id, i.created_at,
@@ -54,6 +45,26 @@ items.post("/upload", async (c) => {
      FROM items i LEFT JOIN containers c ON c.id = i.container_id
      WHERE i.id = ?`
   ).bind(itemId).first();
+
+  c.executionCtx.waitUntil((async () => {
+    try {
+      await c.env.STORAGE.put(r2Key, arrayBuffer, {
+        httpMetadata: { contentType },
+      });
+      await c.env.DB.prepare(
+        "INSERT INTO item_photos (id, item_id, r2_key) VALUES (?, ?, ?)"
+      ).bind(photoId, itemId, r2Key).run();
+      await c.env.IMAGE_QUEUE.send({ item_id: itemId, photo_r2_key: r2Key });
+      await c.env.DB.prepare(
+        "UPDATE items SET status = 'processing' WHERE id = ?"
+      ).bind(itemId).run();
+    } catch (err) {
+      console.error(`Upload background work failed for item ${itemId}:`, err);
+      await c.env.DB.prepare(
+        "UPDATE items SET status = 'upload_failed' WHERE id = ?"
+      ).bind(itemId).run();
+    }
+  })());
 
   return c.json({ item }, 201);
 });

@@ -1,5 +1,6 @@
-import { env } from "cloudflare:test";
+import { env, createExecutionContext, waitOnExecutionContext } from "cloudflare:test";
 import { createTestUser, authRequest } from "./helpers";
+import { app } from "../src/index";
 
 const PNG_BYTES = new Uint8Array([
   137,80,78,71,13,10,26,10,0,0,0,13,73,72,68,82,0,0,0,1,0,0,0,1,8,2,0,0,0,
@@ -8,7 +9,7 @@ const PNG_BYTES = new Uint8Array([
 ]);
 
 describe("POST /api/items/upload", () => {
-  it("uploads a photo and creates an item with processing status", async () => {
+  it("responds 201 with status='uploading' before R2/queue work completes", async () => {
     const user = await createTestUser();
 
     const formData = new FormData();
@@ -21,22 +22,41 @@ describe("POST /api/items/upload", () => {
 
     expect(res.status).toBe(201);
     const data = await res.json() as any;
-    expect(data.item.status).toBe("processing");
+    expect(data.item.status).toBe("uploading");
     expect(data.item.name).toBe("Processing...");
     expect(data.item.id).toBeDefined();
+
+    // The row exists in D1 at response time.
+    const row = await env.DB.prepare(
+      "SELECT id, status FROM items WHERE id = ?"
+    ).bind(data.item.id).first<{ id: string; status: string }>();
+    expect(row).not.toBeNull();
+    expect(row!.status).toBe("uploading");
   });
 
-  it("stores image in R2", async () => {
+  it("after waitUntil settles, status='processing', R2 object exists, and queue got a message", async () => {
     const user = await createTestUser();
 
     const formData = new FormData();
     formData.append("photo", new Blob([PNG_BYTES], { type: "image/png" }), "test.png");
 
-    const res = await authRequest("/api/items/upload", {
-      method: "POST",
-      body: formData,
-    }, user.id);
+    const headers = new Headers();
+    headers.set("x-test-user-id", user.id);
+    const ctx = createExecutionContext();
+    const res = await app.request("/api/items/upload",
+      { method: "POST", headers, body: formData },
+      env, ctx
+    );
+
+    expect(res.status).toBe(201);
     const data = await res.json() as any;
+
+    await waitOnExecutionContext(ctx);
+
+    const row = await env.DB.prepare(
+      "SELECT status FROM items WHERE id = ?"
+    ).bind(data.item.id).first<{ status: string }>();
+    expect(row!.status).toBe("processing");
 
     const photo = await env.DB.prepare(
       "SELECT r2_key FROM item_photos WHERE item_id = ?"

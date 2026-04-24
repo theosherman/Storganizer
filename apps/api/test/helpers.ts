@@ -1,4 +1,4 @@
-import { env } from "cloudflare:test";
+import { env, createExecutionContext } from "cloudflare:test";
 import { ulid } from "../src/lib/ulid";
 import { app } from "../src/index";
 
@@ -74,5 +74,6 @@ export async function createTestItem(userId: string, overrides: Partial<{
 export function authRequest(path: string, init: RequestInit = {}, userId: string) {
   const headers = new Headers(init.headers);
   headers.set("x-test-user-id", userId);
-  return app.request(path, { ...init, headers }, env);
+  const ctx = createExecutionContext();
+  return app.request(path, { ...init, headers }, env, ctx);
 }
