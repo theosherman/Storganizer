@@ -8,6 +8,7 @@ import {
   useCameraMode,
 } from "@/composables/useDefaults";
 import EntityCombobox from "@/components/EntityCombobox.vue";
+import { resizeAndCompress } from "@/lib/resizeAndCompress";
 
 const mode = useCameraMode();
 const defaultContainer = useDefaultContainer();
@@ -50,7 +51,8 @@ async function createLocationAt(name: string) {
   return await createLocation(name);
 }
 
-async function uploadBlob(blob: Blob, filename: string) {
+async function uploadBlob(rawBlob: Blob, filename: string) {
+  const blob = await resizeAndCompress(rawBlob, { maxDim: 1024, quality: 0.8 });
   const blobUrl = URL.createObjectURL(blob);
   const thumb = reactive<Thumb>({
     id: `tmp-${Date.now()}-${Math.random()}`,
