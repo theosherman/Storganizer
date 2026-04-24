@@ -12,7 +12,7 @@ test("POST /api/items/upload forwards container_id form field", async ({ page })
         item: {
           id: "itm-1",
           name: "Processing...",
-          status: "processing",
+          status: "uploading",
           container_id: "ctr-1",
           container_name: "Bin 3",
         },

@@ -1,4 +1,4 @@
-import { test, expect } from "./fixtures";
+import { test, expect, makeTinyJpegBuffer } from "./fixtures";
 
 test("setting default in Unsorted carries through to Camera upload", async ({ page }) => {
   // Pre-seed camera-mode so Camera stays in native mode (avoids getUserMedia path).
@@ -57,31 +57,20 @@ test("setting default in Unsorted carries through to Camera upload", async ({ pa
     await route.fulfill({
       status: 201,
       contentType: "application/json",
-      body: JSON.stringify({ item: { id: "itm-x", name: "Processing...", status: "processing" } }),
+      body: JSON.stringify({ item: { id: "itm-x", name: "Processing...", status: "uploading" } }),
     });
   });
 
   await page.goto("/camera");
 
-  // Build a real, decodable JPEG in-page so `createImageBitmap` won't reject it.
-  const smallJpeg = await page.evaluate(async () => {
-    const canvas = document.createElement("canvas");
-    canvas.width = 32;
-    canvas.height = 32;
-    const ctx = canvas.getContext("2d")!;
-    ctx.fillStyle = "#888";
-    ctx.fillRect(0, 0, 32, 32);
-    const blob = await new Promise<Blob>((r) => canvas.toBlob((b) => r(b!), "image/jpeg", 0.9));
-    const buf = await blob.arrayBuffer();
-    return Array.from(new Uint8Array(buf));
-  });
+  const buffer = await makeTinyJpegBuffer(page);
 
   const input = page.locator('input[type="file"][accept^="image/"]');
   const uploadWait = page.waitForResponse("**/api/items/upload");
   await input.setInputFiles({
     name: "x.jpg",
     mimeType: "image/jpeg",
-    buffer: Buffer.from(smallJpeg),
+    buffer,
   });
   await uploadWait;
 

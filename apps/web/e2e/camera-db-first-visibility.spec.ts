@@ -1,4 +1,4 @@
-import { test, expect } from "./fixtures";
+import { test, expect, makeTinyJpegBuffer } from "./fixtures";
 
 test("after uploading, navigating to Unsorted shows the new item without reload", async ({ page }) => {
   await page.addInitScript(() => {
@@ -31,21 +31,12 @@ test("after uploading, navigating to Unsorted shows the new item without reload"
 
   await page.goto("/camera");
   const input = page.locator('input[type="file"][accept^="image/"]');
-  // Build a real, decodable JPEG in-page — compression requires a valid image.
-  const smallJpeg = await page.evaluate(async () => {
-    const canvas = document.createElement("canvas");
-    canvas.width = 32;
-    canvas.height = 32;
-    const ctx = canvas.getContext("2d")!;
-    ctx.fillStyle = "#888";
-    ctx.fillRect(0, 0, 32, 32);
-    const blob = await new Promise<Blob>((r) => canvas.toBlob((b) => r(b!), "image/jpeg", 0.9));
-    return Array.from(new Uint8Array(await blob.arrayBuffer()));
-  });
+  // A real, decodable JPEG is required — compression needs a valid image.
+  const buffer = await makeTinyJpegBuffer(page);
   await input.setInputFiles({
     name: "v.jpg",
     mimeType: "image/jpeg",
-    buffer: Buffer.from(smallJpeg),
+    buffer,
   });
 
   await page.waitForResponse("**/api/items/upload");
