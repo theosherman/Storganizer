@@ -56,13 +56,17 @@ items.post("/upload", async (c) => {
       ).bind(photoId, itemId, r2Key).run();
       await c.env.IMAGE_QUEUE.send({ item_id: itemId, photo_r2_key: r2Key });
       await c.env.DB.prepare(
-        "UPDATE items SET status = 'processing' WHERE id = ?"
+        "UPDATE items SET status = 'processing' WHERE id = ? AND status = 'uploading'"
       ).bind(itemId).run();
     } catch (err) {
       console.error(`Upload background work failed for item ${itemId}:`, err);
-      await c.env.DB.prepare(
-        "UPDATE items SET status = 'upload_failed' WHERE id = ?"
-      ).bind(itemId).run();
+      try {
+        await c.env.DB.prepare(
+          "UPDATE items SET status = 'upload_failed' WHERE id = ? AND status = 'uploading'"
+        ).bind(itemId).run();
+      } catch (updateErr) {
+        console.error(`Also failed to mark item ${itemId} upload_failed:`, updateErr);
+      }
     }
   })());
 
