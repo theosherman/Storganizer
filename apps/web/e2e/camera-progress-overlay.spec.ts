@@ -19,11 +19,24 @@ test("green progress overlay appears on thumb during upload and reaches 100%", a
 
   await page.goto("/camera");
 
+  // Build a real, decodable JPEG in-page so `createImageBitmap` won't reject it.
+  const smallJpeg = await page.evaluate(async () => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 32;
+    canvas.height = 32;
+    const ctx = canvas.getContext("2d")!;
+    ctx.fillStyle = "#888";
+    ctx.fillRect(0, 0, 32, 32);
+    const blob = await new Promise<Blob>((r) => canvas.toBlob((b) => r(b!), "image/jpeg", 0.9));
+    const buf = await blob.arrayBuffer();
+    return Array.from(new Uint8Array(buf));
+  });
+
   const input = page.locator('input[type="file"][accept^="image/"]');
   await input.setInputFiles({
     name: "p.jpg",
     mimeType: "image/jpeg",
-    buffer: Buffer.from([0xff, 0xd8, 0xff, 0xd9]),
+    buffer: Buffer.from(smallJpeg),
   });
 
   const bar = page.getByRole("progressbar").first();

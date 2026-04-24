@@ -55,13 +55,7 @@ async function createLocationAt(name: string) {
 }
 
 async function uploadBlob(rawBlob: Blob, filename: string) {
-  let blob: Blob;
-  try {
-    blob = await resizeAndCompress(rawBlob, { maxDim: 1024, quality: 0.8 });
-  } catch {
-    // Source bytes weren't a decodable image (e.g. corrupt capture); upload raw.
-    blob = rawBlob;
-  }
+  const blob = await resizeAndCompress(rawBlob, { maxDim: 1024, quality: 0.8 });
   const blobUrl = URL.createObjectURL(blob);
   const thumb = reactive<Thumb>({
     id: `tmp-${Date.now()}-${Math.random()}`,
